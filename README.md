@@ -17,6 +17,15 @@ Goal
 * parse retrieved information from server
 
 
+TODO
+----
+
+* extend key space by introducing three float key,
+one for row permutation,
+one for column permutation,
+one for block permutation
+
+
 License
 -------
 

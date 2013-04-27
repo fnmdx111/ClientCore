@@ -1,0 +1,5 @@
+
+class ImageSizeNotMatchException(BaseException):
+    pass
+
+

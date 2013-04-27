@@ -1,6 +1,8 @@
 # encoding: utf-8
 
 """
+    使用前先看README.md里的Required Library项
+
     使用方法
     在你的窗口类里新建一个ClientCore变量，例如
         self.core = ClientCore(key=0.7000001,

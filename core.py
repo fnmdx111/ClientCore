@@ -22,6 +22,10 @@
             将指定路径的JPEG文件发送至服务器进行检索
         + send_img(img, max_count=10) -> response
             将指定的numpy.ndarray类型的数据发送至服务器进行检索
+        + upload_img_by_path(path) -> response
+            将指定路径的JPEG文件上传至服务器
+        + upload_img(img) -> response
+            将指定的numpy.ndarray类型的数据上传至服务器
         + parse_result(response) -> int
             解析服务器返回的数据，
             密变换后保存至cwd/results目录下，
@@ -54,6 +58,7 @@ class ClientCore(object):
     DCT_CONTAINER_TYPE = np.int64
     GRAYSCALE_CONTAINER_TYPE = np.int16
     SEND_ENC_IMAGE_URL = 'send'
+    UPLOAD_ENC_IMAGE_URL = 'add'
 
     def __init__(self, key,
                  (size_h, size_w)=(480, 640),
@@ -123,7 +128,7 @@ class ClientCore(object):
         cv2.imwrite(path, img)
 
 
-    def __transform_block(self, block, table):
+    def _transform_block(self, block, table):
         ret = np.zeros(block.shape, dtype=ClientCore.DCT_CONTAINER_TYPE)
         ret[0, 0] = block[0, 0]
         for i, p in zip(range(1, 64), table):
@@ -141,7 +146,7 @@ class ClientCore(object):
                                        (8, 8))))
         for i in range(self.size_b_h):
             for j in range(self.size_b_w):
-                tmp[i, j][:, :] = self.__transform_block(img[i, table[i][j]],
+                tmp[i, j][:, :] = self._transform_block(img[i, table[i][j]],
                                                        block_table)
         for i in range(self.size_b_h):
             ret[i, :] = tmp[table[-1][i]]
@@ -179,6 +184,22 @@ class ClientCore(object):
         return self._send_str(post_url,
                               img=base64.standard_b64encode(img_buf.data),
                               max_count=max_count)
+
+
+    def upload_img_by_path(self, path):
+        post_url = '%s/%s' % (self.server_addr,
+                              ClientCore.UPLOAD_ENC_IMAGE_URL)
+        with open(path, 'rb') as f:
+            return self._send_str(post_url,
+                                  img=base64.standard_b64encode(f.read()))
+
+
+    def upload_img(self, img):
+        _, img_buf = cv2.imencode('.jpg', img)
+        post_url = '%s/%s' % (self.server_addr,
+                              ClientCore.UPLOAD_ENC_IMAGE_URL)
+        return self._send_str(post_url,
+                              img=base64.standard_b64encode(img_buf.data))
 
 
     def _send_str(self, post_url, **d):
@@ -225,7 +246,12 @@ class ClientCore(object):
 
 if __name__ == '__main__':
     cc = ClientCore(np.float32(.7000001))
-    r = cc.send_img(cc.enc_img(path='7.jpg'))
-    r = cc.parse_result(r)
-    cc.logger.info('processed %s results', r)
+    # r = cc.send_img(cc.enc_img(path='7.jpg'))
+    # r = cc.parse_result(r)
+    # cc.logger.info('processed %s results', r)
+    r = cc.upload_img_by_path(path='7.jpg')
+    assert r.json()['status'] == 'ok'
+    r = cc.upload_img_by_path(path='8.jpg')
+    assert r.json()['status'] == 'ok'
+
 

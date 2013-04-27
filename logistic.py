@@ -5,6 +5,7 @@ import numpy as np
 npf32_1 = np.float32(1.)
 npf32_2 = np.float32(2.)
 
+
 def f(x):
     """
     >>> f(np.float32(.7000001))
@@ -25,7 +26,7 @@ def gen_list(key, size=80):
         float_l.append(it)
 
     float_l_sorted = sorted(float_l)
-    float_d = {x : i for i, x in enumerate(float_l_sorted)}
+    float_d = {x: i for i, x in enumerate(float_l_sorted)}
     # float_d = {0.521245: 1, 0.654521: 2, 0.791253: 3, ...}
     return [float_d[x] for x in float_l], it
 
@@ -50,14 +51,20 @@ def get_encrypt_mat(key, (height, width)=(60, 80)):
 def get_decrypt_mat(key, (height, width)=(60, 80)):
     """
     >>> get_decrypt_mat(np.float32(.7000001), (4, 4))
-    [[2, 3, 0, 1], [0, 1, 2, 3], [0, 2, 1, 3], [0, 1, 2, 3], [3, 1, 0, 2]]
+    [[0, 2, 1, 3], [0, 1, 2, 3], [0, 1, 2, 3], [2, 3, 0, 1], [3, 1, 0, 2]]
     """
-    enc_mat = get_encrypt_mat(key, (height, width))
-    mat = []
-    for row in enc_mat:
-        mat.append({x: i for i, x in enumerate(row)}.values())
+    def get_inverse(l):
+        return {x: i for i, x in enumerate(l)}.values()
 
-    return mat
+    enc_mat = get_encrypt_mat(key, (height, width))
+    dec_mat = [[] for _ in range(height)]
+
+    row_inv_table = get_inverse(enc_mat[-1])
+    for i, row in enumerate(enc_mat[:-1]):
+        dec_mat[row_inv_table[i]] = get_inverse(row)
+    dec_mat.append(row_inv_table)
+
+    return dec_mat
 
 
 def get_block_perm_mat(key):
@@ -73,12 +80,18 @@ def test():
     table = get_encrypt_mat(np.float32(.7000001), (4, 5))
     inv_table = get_decrypt_mat(np.float32(.7000001), (4, 5))
 
+    print table
+    print inv_table
+
     def transform(mat, table):
-        ret = np.zeros((4, 5))
+        ret = np.zeros((4, 5), dtype=np.int32)
+        ret_ = np.zeros((4, 5), dtype=np.int32)
         for i in range(4):
             for j in range(5):
-                ret[i, j] = mat[table[-1][i], table[i][j]]
-        return ret
+                ret[i, j] = mat[i, table[i][j]]
+        for i in range(4):
+            ret_[i, :] = ret[table[-1][i]]
+        return ret_
 
     print mat
     t_mat = transform(mat, table)

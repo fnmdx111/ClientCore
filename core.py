@@ -5,9 +5,9 @@
 
     使用方法
     在你的窗口类里新建一个ClientCore变量，例如
-        self.core = ClientCore(key=0.7000001,
+        self.core = ClientCore(keys=(key1, key2, key3),
                                cwd=os.getcwd())
-    其中key为密钥，cwd为当前工作目录（cwd设为默认值即可）
+    其中key_i为3个numpy.float64组成的元组作为密钥，cwd为当前工作目录（cwd设为默认值即可）
     ClientCore类主要方法有
         + open_img(path)
             按灰度模式打开图片，返回numpy.ndarray数组，
@@ -62,23 +62,27 @@ class ClientCore(object):
     SEND_ENC_IMAGE_URL = 'send'
     UPLOAD_ENC_IMAGE_URL = 'add'
 
-    def __init__(self, key,
+    def __init__(self, keys,
                  (size_h, size_w)=(480, 640),
                  server_addr='http://127.0.0.1:5000',
                  cwd=os.getcwd()):
         self.cwd = cwd
 
-        self.key = key
         self.size_h = size_h
         self.size_w = size_w
+
         self.size_b_h = size_h / 8
         self.size_b_w = size_w / 8
+        size_b_pair = self.size_b_h, self.size_b_w
 
-        self.perm_table = logistic.get_encrypt_mat(self.key, (self.size_b_h, self.size_b_w))
-        self.inv_perm_table = logistic.get_decrypt_mat(self.key, (self.size_b_h, self.size_b_w))
+        key1, key2, key3 = keys
+        self.logistic = logistic.LogisticPermutation(key1, key2, key3)
 
-        self.block_perm_table = logistic.get_block_perm_mat(self.key)
-        self.inv_block_perm_table = logistic.get_block_inv_perm_mat(self.key)
+        self.perm_table = self.logistic.get_encrypt_mat(size_b_pair)
+        self.inv_perm_table = self.logistic.get_decrypt_mat(size_b_pair)
+
+        self.block_perm_table = self.logistic.get_block_perm_mat()
+        self.inv_block_perm_table = self.logistic.get_block_inv_perm_mat()
 
         self.server_addr = server_addr
 
@@ -247,15 +251,20 @@ class ClientCore(object):
 
 
 if __name__ == '__main__':
-    cc = ClientCore(np.float64(.7000000000000001))
-    cc.save_img('12.jpg', cc.enc_img(path='7.jpg'))
+    print os.getcwd()
+    key = np.float64(.7000000000000001), np.float64(3.6000000000000001), 211
+    cc = ClientCore((key, key, key))
+    cc.save_img('12.jpg', cc.enc_img(path='8.jpg'))
     # r = cc.parse_result(r)
     # cc.logger.info('processed %s results', r)
-    cc = ClientCore(np.float64(.7000000000000002))
+    # cc = ClientCore(np.float64(.7000000000000002))
     cc.save_img('1.jpg', cc.dec_img(path='12.jpg'))
-    # r = cc.upload_img_by_path(path='7.jpg')
+    import matplotlib.pyplot as plt
+    plt.hist(cc.open_img('8.jpg'))
+    plt.hist(cc.open_img('12.jpg'))
+    # r = cc.upload_img(cc.enc_img(path='7.jpg'))
     # assert r.json()['status'] == 'ok'
-    # r = cc.upload_img_by_path(path='8.jpg')
+    # r = cc.upload_img(cc.enc_img(path='8.jpg'))
     # assert r.json()['status'] == 'ok'
 
 

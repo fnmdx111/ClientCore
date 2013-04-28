@@ -49,9 +49,8 @@ import cv2
 from itertools import product
 import logging
 import os
-import uuid
 import requests
-from exc import ImageSizeNotMatchException, ServerError
+from exc import ImageSizeNotMatchException
 import logistic
 import numpy as np
 
@@ -134,6 +133,11 @@ class ClientCore(object):
         cv2.imwrite(path, img)
 
 
+    def save_img_m(self, img):
+        _, buf = cv2.imencode('.jpg', img)
+        return str(buf.data)
+
+
     def _transform_block(self, block, table):
         ret = np.zeros(block.shape, dtype=ClientCore.DCT_CONTAINER_TYPE)
         ret[0, 0] = block[0, 0]
@@ -192,6 +196,14 @@ class ClientCore(object):
                               max_count=max_count)
 
 
+    def send_img_raw(self, raw, max_count=10):
+        post_url = '%s/%s' % (self.server_addr,
+                              ClientCore.SEND_ENC_IMAGE_URL)
+        return self._send_str(post_url,
+                              img=base64.standard_b64encode(raw),
+                              max_count=max_count)
+
+
     def upload_img_by_path(self, path):
         post_url = '%s/%s' % (self.server_addr,
                               ClientCore.UPLOAD_ENC_IMAGE_URL)
@@ -208,17 +220,27 @@ class ClientCore(object):
                               img=base64.standard_b64encode(img_buf.data))
 
 
+    def upload_img_raw(self, raw):
+        post_url = '%s/%s' % (self.server_addr,
+                              ClientCore.UPLOAD_ENC_IMAGE_URL)
+        return self._send_str(post_url,
+                              img=base64.standard_b64encode(raw))
+
+
     def _send_str(self, post_url, **d):
         self.logger.info('posting to %s', post_url)
         return requests.post(post_url,
                              data=d)
 
 
-    def _transform_img(self, func, path='', array=''):
+    def _transform_img(self, func, path='', array=None):
         if path:
             img = self.open_img(path)
-        elif array:
-            img = array
+        elif isinstance(array, np.ndarray):
+            if array.any():
+                img = array
+            else:
+                raise TypeError('no fatal argument provided')
         else:
             raise TypeError('no fatal argument provided')
 
@@ -233,35 +255,39 @@ class ClientCore(object):
         return self._transform_img(self._dec, path=path, array=array)
 
 
+    def _from_raw_to_grayscale(self, raw):
+        return cv2.imdecode(np.fromstring(raw, dtype=np.uint8),
+                            cv2.CV_LOAD_IMAGE_GRAYSCALE)
+
+
     def parse_result(self, response):
         r = response.json()
         if r['status'] != 'ok':
-            raise ServerError
-        rnd_path = '%s.jpg' % uuid.uuid1().get_hex()
-        for idx, data in enumerate(r['results']):
-            with open(rnd_path, 'wb') as tmp:
-                print >> tmp, base64.standard_b64decode(data)
-                tmp.flush()
-                self.save_img('%s/results/res%s.jpg' % (self.cwd, idx),
-                              self.dec_img(path=rnd_path))
-        if os.path.isfile(rnd_path):
-            os.remove(rnd_path)
+            return r['status']
 
-        return len(r['results'])
+        distances = []
+        for idx, (data, dist) in enumerate(r['results']):
+            raw = base64.standard_b64decode(data)
+            self.save_img('%s/results/res%s.jpg' % (self.cwd, idx),
+                          self.dec_img(array=self._from_raw_to_grayscale(raw)))
+            distances.append(dist)
+
+        return len(r['results']), distances
+
 
 
 if __name__ == '__main__':
     print os.getcwd()
     key = np.float64(.7000000000000001), np.float64(3.6000000000000001), 211
     cc = ClientCore((key, key, key))
-    cc.save_img('12.jpg', cc.enc_img(path='8.jpg'))
+    buf = cc.save_img_m(cc.enc_img(path='8.jpg'))
     # r = cc.parse_result(r)
     # cc.logger.info('processed %s results', r)
     # cc = ClientCore(np.float64(.7000000000000002))
-    cc.save_img('1.jpg', cc.dec_img(path='12.jpg'))
-    import matplotlib.pyplot as plt
-    plt.hist(cc.open_img('8.jpg'))
-    plt.hist(cc.open_img('12.jpg'))
+    # cc.save_img('1.jpg', cc.dec_img(path='12.jpg'))
+    # import matplotlib.pyplot as plt
+    # plt.hist(cc.open_img('8.jpg'))
+    # plt.hist(cc.open_img('12.jpg'))
     # r = cc.upload_img(cc.enc_img(path='7.jpg'))
     # assert r.json()['status'] == 'ok'
     # r = cc.upload_img(cc.enc_img(path='8.jpg'))

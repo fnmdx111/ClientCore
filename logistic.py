@@ -2,13 +2,13 @@
 
 import numpy as np
 
-npf32_1 = np.float32(1.)
-npf32_2 = np.float32(2.)
+npf32_1 = np.float64(1.)
+npf32_2 = np.float64(2.)
 
 
 def f(x):
     """
-    >>> f(np.float32(.7000001))
+    >>> f(np.float64(.7000001))
     0.019999683
     """
     return npf32_1 - npf32_2 * x * x
@@ -16,13 +16,13 @@ def f(x):
 
 def gen_list(key, size=80):
     """
-    >>> gen_list(np.float32(.7000001), size=10)
+    >>> gen_list(np.float64(.700000001), size=10)
     ([6, 9, 0, 1, 2, 3, 5, 8, 4, 7], 0.68547022)
     """
     float_l = []
     it = key
     for i in range(size):
-        it = f(it)
+        it = f(it) #, np.float64(3.600000001))
         float_l.append(it)
 
     float_l_sorted = sorted(float_l)
@@ -33,7 +33,7 @@ def gen_list(key, size=80):
 
 def get_encrypt_mat(key, (height, width)=(60, 80)):
     """
-    >>> get_encrypt_mat(np.float32(.7000001), (4, 4))
+    >>> get_encrypt_mat(np.float64(.7000001), (4, 4))
     [[2, 3, 0, 1], [0, 1, 2, 3], [0, 2, 1, 3], [0, 1, 2, 3], [2, 1, 3, 0]]
     """
     mat = []
@@ -50,7 +50,7 @@ def get_encrypt_mat(key, (height, width)=(60, 80)):
 
 def get_decrypt_mat(key, (height, width)=(60, 80)):
     """
-    >>> get_decrypt_mat(np.float32(.7000001), (4, 4))
+    >>> get_decrypt_mat(np.float64(.7000001), (4, 4))
     [[0, 2, 1, 3], [0, 1, 2, 3], [0, 1, 2, 3], [2, 3, 0, 1], [3, 1, 0, 2]]
     """
     def get_inverse(l):
@@ -77,8 +77,8 @@ def get_block_inv_perm_mat(key):
 
 def test():
     mat = np.array(range(20)).reshape((4, 5))
-    table = get_encrypt_mat(np.float32(.7000001), (4, 5))
-    inv_table = get_decrypt_mat(np.float32(.7000001), (4, 5))
+    table = get_encrypt_mat(np.float64(.7000001), (4, 5))
+    inv_table = get_decrypt_mat(np.float64(.7000001), (4, 5))
 
     print table
     print inv_table
@@ -101,10 +101,10 @@ def test():
 
 
 if __name__ == '__main__':
-    # # print get_block_perm_mat(np.float32(.7000001))
-    # print get_encrypt_mat(np.float32(.7000001), (60, 80))
-    # # print get_block_inv_perm_mat(np.float32(.7000001))
-    # print get_decrypt_mat(np.float32(.7000001), (60, 80))
+    # # print get_block_perm_mat(np.float64(.7000001))
+    # print get_encrypt_mat(np.float64(.7000001), (60, 80))
+    # # print get_block_inv_perm_mat(np.float64(.7000001))
+    # print get_decrypt_mat(np.float64(.7000001), (60, 80))
     test()
 
 

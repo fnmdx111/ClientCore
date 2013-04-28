@@ -247,10 +247,12 @@ class ClientCore(object):
 
 
 if __name__ == '__main__':
-    cc = ClientCore(np.float32(.7000001))
-    r = cc.send_img(cc.enc_img(path='7.jpg'))
-    r = cc.parse_result(r)
-    cc.logger.info('processed %s results', r)
+    cc = ClientCore(np.float64(.7000000000000001))
+    cc.save_img('12.jpg', cc.enc_img(path='7.jpg'))
+    # r = cc.parse_result(r)
+    # cc.logger.info('processed %s results', r)
+    cc = ClientCore(np.float64(.7000000000000002))
+    cc.save_img('1.jpg', cc.dec_img(path='12.jpg'))
     # r = cc.upload_img_by_path(path='7.jpg')
     # assert r.json()['status'] == 'ok'
     # r = cc.upload_img_by_path(path='8.jpg')

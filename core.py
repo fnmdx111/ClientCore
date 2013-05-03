@@ -49,6 +49,7 @@ import cv2
 from itertools import product
 import logging
 import os
+import uuid
 import requests
 from exc import ImageSizeNotMatchException
 import logistic
@@ -60,6 +61,9 @@ class ClientCore(object):
     GRAYSCALE_CONTAINER_TYPE = np.int16
     SEND_ENC_IMAGE_URL = 'send'
     UPLOAD_ENC_IMAGE_URL = 'add'
+    LOGIN_URL = 'login'
+    LOGOUT_URL = 'logout'
+    RETRIEVE_URL = 'retrieve'
 
     def __init__(self, keys,
                  (size_h, size_w)=(480, 640),
@@ -90,6 +94,22 @@ class ClientCore(object):
 
         logging.basicConfig(level=logging.INFO)
         self.logger = logging.getLogger(__name__)
+
+        self.session = requests.Session()
+
+
+    def init_core(self):
+        client_id = uuid.uuid1().get_hex()
+        return self.session.post(self._gen_url(self.LOGIN_URL),
+                                 {'id': client_id}).json()
+
+
+    def finalize_core(self):
+        self.session.post(self._gen_url(self.LOGOUT_URL))
+
+
+    def _gen_url(self, sub_url):
+        return '%s/%s' % (self.server_addr, sub_url)
 
 
     def _dct_img(self, img):
@@ -179,58 +199,46 @@ class ClientCore(object):
 
 
     def send_img_by_path(self, path, max_count=10):
-        post_url = '%s/%s' % (self.server_addr,
-                              ClientCore.SEND_ENC_IMAGE_URL)
         with open(path, 'rb') as f:
-            return self._send_str(post_url,
+            return self._send_str(self._gen_url(self.SEND_ENC_IMAGE_URL),
                                   img=base64.standard_b64encode(f.read()),
                                   max_count=max_count)
 
 
     def send_img(self, img, max_count=10):
         _, img_buf = cv2.imencode('.jpg', img)
-        post_url = '%s/%s' % (self.server_addr,
-                              ClientCore.SEND_ENC_IMAGE_URL)
-        return self._send_str(post_url,
+        return self._send_str(self._gen_url(self.SEND_ENC_IMAGE_URL),
                               img=base64.standard_b64encode(img_buf.data),
                               max_count=max_count)
 
 
     def send_img_raw(self, raw, max_count=10):
-        post_url = '%s/%s' % (self.server_addr,
-                              ClientCore.SEND_ENC_IMAGE_URL)
-        return self._send_str(post_url,
+        return self._send_str(self._gen_url(self.SEND_ENC_IMAGE_URL),
                               img=base64.standard_b64encode(raw),
                               max_count=max_count)
 
 
     def upload_img_by_path(self, path):
-        post_url = '%s/%s' % (self.server_addr,
-                              ClientCore.UPLOAD_ENC_IMAGE_URL)
         with open(path, 'rb') as f:
-            return self._send_str(post_url,
+            return self._send_str(self._gen_url(self.UPLOAD_ENC_IMAGE_URL),
                                   img=base64.standard_b64encode(f.read()))
 
 
     def upload_img(self, img):
         _, img_buf = cv2.imencode('.jpg', img)
-        post_url = '%s/%s' % (self.server_addr,
-                              ClientCore.UPLOAD_ENC_IMAGE_URL)
-        return self._send_str(post_url,
+        return self._send_str(self._gen_url(self.UPLOAD_ENC_IMAGE_URL),
                               img=base64.standard_b64encode(img_buf.data))
 
 
     def upload_img_raw(self, raw):
-        post_url = '%s/%s' % (self.server_addr,
-                              ClientCore.UPLOAD_ENC_IMAGE_URL)
-        return self._send_str(post_url,
+        return self._send_str(self._gen_url(self.UPLOAD_ENC_IMAGE_URL),
                               img=base64.standard_b64encode(raw))
 
 
     def _send_str(self, post_url, **d):
         self.logger.info('posting to %s', post_url)
-        return requests.post(post_url,
-                             data=d)
+        return self.session.post(post_url,
+                                 data=d).json()
 
 
     def _transform_img(self, func, path='', array=None):
@@ -260,19 +268,20 @@ class ClientCore(object):
                             cv2.CV_LOAD_IMAGE_GRAYSCALE)
 
 
-    def parse_result(self, response):
-        r = response.json()
+    def write_result(self, data, i):
+        f_path = '%s/results/res%s.jpg' % (self.cwd, i)
+        self.save_img(f_path,
+                      self.dec_img(array=self._from_raw_to_grayscale(data)))
+        return f_path
+
+
+    def parse_result(self, _):
+        r = self.session.post(self._gen_url(self.RETRIEVE_URL)).json()
         if r['status'] != 'ok':
-            return r['status']
+            return r['result'], ''
 
-        distances = []
-        for idx, (data, dist) in enumerate(r['results']):
-            raw = base64.standard_b64decode(data)
-            self.save_img('%s/results/res%s.jpg' % (self.cwd, idx),
-                          self.dec_img(array=self._from_raw_to_grayscale(raw)))
-            distances.append(dist)
-
-        return len(r['results']), distances
+        raw, norm = r['result']
+        return base64.standard_b64decode(raw), norm
 
 
 

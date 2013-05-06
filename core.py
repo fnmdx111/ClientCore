@@ -57,7 +57,7 @@ import numpy as np
 
 
 class ClientCore(object):
-    DCT_CONTAINER_TYPE = np.int64
+    DCT_CONTAINER_TYPE = np.float64
     GRAYSCALE_CONTAINER_TYPE = np.int16
     SEND_ENC_IMAGE_URL = 'send'
     UPLOAD_ENC_IMAGE_URL = 'add'
@@ -116,7 +116,7 @@ class ClientCore(object):
         ret = np.ndarray((self.size_b_h, self.size_b_w),
                          dtype=np.dtype((ClientCore.DCT_CONTAINER_TYPE,
                                          (8, 8))))
-        mat = np.zeros((8, 8), dtype=np.float64)
+        mat = np.zeros((8, 8), dtype=self.DCT_CONTAINER_TYPE)
 
         for r, c in self.block_coordinates:
             mat[:8, :8] = img[r:r + 8, c:c + 8] # dct argument must be matrix of float
@@ -129,7 +129,7 @@ class ClientCore(object):
         ret = np.zeros((self.size_h, self.size_w),
                        dtype=ClientCore.GRAYSCALE_CONTAINER_TYPE)
         mat = mat.reshape((self.size_b_h, self.size_b_w, 8, 8))
-        block_float = np.zeros((8, 8), dtype=np.float64)
+        block_float = np.zeros((8, 8), dtype=self.DCT_CONTAINER_TYPE)
 
         for i in range(self.size_b_h):
             for j in range(self.size_b_w):
@@ -269,7 +269,7 @@ class ClientCore(object):
 
 
     def write_result(self, data, i):
-        f_path = '%s/results/res%s.jpg' % (self.cwd, i)
+        f_path = os.path.join(self.cwd, 'results', 'res%s.jpg' % i)
         self.save_img(f_path,
                       self.dec_img(array=self._from_raw_to_grayscale(data)))
         return f_path

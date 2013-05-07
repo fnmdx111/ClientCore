@@ -20,10 +20,7 @@ Goal
 TODO
 ----
 
-* extend key space by introducing three float key,
-one for row permutation,
-one for column permutation,
-one for block permutation (done)
+* adjust algorithm so that difference between original and retrieved is not too great
 * implement robust test
 
 

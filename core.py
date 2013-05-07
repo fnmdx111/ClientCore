@@ -1,49 +1,5 @@
 # encoding: utf-8
 
-"""
-    使用前先看README.md里的Required Library项
-
-    使用方法
-    在你的窗口类里新建一个ClientCore变量，例如
-        self.core = ClientCore(keys=(key1, key2, key3),
-                               cwd=os.getcwd())
-    其中key_i为3个numpy.float64组成的元组作为密钥，cwd为当前工作目录（cwd设为默认值即可）
-    ClientCore类主要方法有
-        + open_img(path)
-            按灰度模式打开图片，返回numpy.ndarray数组，
-            其中数组元素为每一像素的灰度值
-        + save_img(path)
-            将灰度值数组保存为JPEG文件
-        + enc_img(path) -> img_enc 或
-          enc_img(img) -> img_enc 其中img和img_enc是numpy.ndarray数组
-            加密置换图片，并不改变img的内容
-        + dec_img(path) -> img_dec 或
-          dec_img(img) -> img_dec 其中img和img_dec是numpy.ndarray数组
-            解密置换图片，并不改变img的内容
-        + send_img_by_path(path, max_count=10) -> response
-            将指定路径的JPEG文件发送至服务器进行检索
-        + send_img(img, max_count=10) -> response
-            将指定的numpy.ndarray类型的数据发送至服务器进行检索
-        + upload_img_by_path(path) -> response
-            将指定路径的JPEG文件上传至服务器
-        + upload_img(img) -> response
-            将指定的numpy.ndarray类型的数据上传至服务器
-        + parse_result(response) -> int
-            解析服务器返回的数据，
-            密变换后保存至cwd/results目录下，
-            按返回的顺序从零开始编号，
-            返回值为服务器返回数据个数
-    具体的使用例子可以看最后的if __name__ == '__main__':段。
-
-    ClientCore模块使用方法建议：
-        在ui工程下新建一个文件夹libs，然后把core.py，exc.py，logistic.py拷进去，
-        然后在你的ui代码里的第一行加上
-            # encoding: utf-8
-        换一行之后写
-            from libs.core import ClientCore
-    应该就没什么问题了，直接给各种按钮绑定ClientCore实例的方法就行了。
-"""
-
 import base64
 import cv2
 from itertools import product
@@ -113,6 +69,11 @@ class ClientCore(object):
 
 
     def _dct_img(self, img):
+        """
+        return dct of specified matrix
+        :param img: np.ndarray of self.GRAYSCALE_CONTAINER_TYPE
+        :return: np.ndarray of self.DCT_CONTAINER_TYPE
+        """
         ret = np.ndarray((self.size_b_h, self.size_b_w),
                          dtype=np.dtype((ClientCore.DCT_CONTAINER_TYPE,
                                          (8, 8))))
@@ -126,6 +87,11 @@ class ClientCore(object):
 
 
     def _idct_img(self, mat):
+        """
+        return inverse dct of specified matrix
+        :param mat: np.ndarray of self.DCT_CONTAINER_TYPE
+        :return: np.ndarray of self.GRAYSCALE_CONTAINER_TYPE
+        """
         ret = np.zeros((self.size_h, self.size_w),
                        dtype=ClientCore.GRAYSCALE_CONTAINER_TYPE)
         mat = mat.reshape((self.size_b_h, self.size_b_w, 8, 8))
@@ -168,6 +134,15 @@ class ClientCore(object):
 
 
     def _transform(self, img, table, block_table):
+        """
+        transform (permutation) :img: according to :table: and :block_table:
+        :param img: np.ndarray of self.DCT_CONTAINER_TYPE
+                    that holds the matrix of image after DCT, size is (60, 80, 8, 8)
+        :param table: matrix permutation table
+        :param block_table: block permutation table
+        :return: np.ndarray of self.DCT_CONTAINER_TYPE that holds the matrix
+                 after permutation, size if (480, 640)
+        """
         tmp = np.zeros((self.size_b_h, self.size_b_w),
                        dtype=np.dtype((ClientCore.DCT_CONTAINER_TYPE,
                                        (8, 8))))
@@ -177,7 +152,7 @@ class ClientCore(object):
         for i in range(self.size_b_h):
             for j in range(self.size_b_w):
                 tmp[i, j][:, :] = self._transform_block(img[i, table[i][j]],
-                                                       block_table)
+                                                        block_table)
         for i in range(self.size_b_h):
             ret[i, :] = tmp[table[-1][i]]
 
@@ -242,6 +217,15 @@ class ClientCore(object):
 
 
     def _transform_img(self, func, path='', array=None):
+        """
+        do transformation on image specified by array or path
+        :param func: op func e.g. self._enc or self._dec
+        :param path: str that holds image path
+        :param array: np.ndarray of self.GRAYSCALE_CONTAINER_TYPE
+                      that holds source's grayscale array
+        :return: np.ndarray of self.GRAYSCALE_CONTAINER_TYPE
+        :raise: TypeError
+        """
         if path:
             img = self.open_img(path)
         elif isinstance(array, np.ndarray):
@@ -256,26 +240,52 @@ class ClientCore(object):
 
 
     def enc_img(self, path='', array=''):
+        """for signature, see self._transform_img"""
         return self._transform_img(self._enc, path=path, array=array)
 
 
     def dec_img(self, path='', array=''):
+        """for signature, see self._transform_img"""
         return self._transform_img(self._dec, path=path, array=array)
 
 
     def _from_raw_to_grayscale(self, raw):
+        """
+        convert binary data into image's grayscale array
+        :param raw: binary data of image
+        :return: np.ndarray of self.GRAYSCALE_CONTAINER_TYPE
+        """
         return cv2.imdecode(np.fromstring(raw, dtype=np.uint8),
                             cv2.CV_LOAD_IMAGE_GRAYSCALE)
 
 
     def write_result(self, data, i):
+        """
+        write data into local file after decryption (i.e. inverse permutation)
+        :param data: binary data of image
+        :param i: number of image
+        :return: image file path
+        """
+        return self.write_result(self.dec_img(array=self._from_raw_to_grayscale(data)), i)
+
+
+    def write_result(self, img, i):
+        """
+        write data directly into local file
+        :param img: np.ndarray of self.GRAYSCALE_CONTAINER_TYPE
+        :param i: number of image
+        :return: image file path
+        """
         f_path = os.path.join(self.cwd, 'results', 'res%s.jpg' % i)
-        self.save_img(f_path,
-                      self.dec_img(array=self._from_raw_to_grayscale(data)))
+        self.save_img(f_path, img)
         return f_path
 
 
     def parse_result(self, _):
+        """
+        retrieve single result of the result set
+        :return: str of image's binary data and distance
+        """
         r = self.session.post(self._gen_url(self.RETRIEVE_URL)).json()
         if r['status'] != 'ok':
             return r['result'], ''
@@ -290,16 +300,5 @@ if __name__ == '__main__':
     key = np.float64(.7000000000000001), np.float64(3.6000000000000001), 211
     cc = ClientCore((key, key, key))
     buf = cc.save_img_m(cc.enc_img(path='8.jpg'))
-    # r = cc.parse_result(r)
-    # cc.logger.info('processed %s results', r)
-    # cc = ClientCore(np.float64(.7000000000000002))
-    # cc.save_img('1.jpg', cc.dec_img(path='12.jpg'))
-    # import matplotlib.pyplot as plt
-    # plt.hist(cc.open_img('8.jpg'))
-    # plt.hist(cc.open_img('12.jpg'))
-    # r = cc.upload_img(cc.enc_img(path='7.jpg'))
-    # assert r.json()['status'] == 'ok'
-    # r = cc.upload_img(cc.enc_img(path='8.jpg'))
-    # assert r.json()['status'] == 'ok'
 
 

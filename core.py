@@ -259,7 +259,7 @@ class ClientCore(object):
                             cv2.CV_LOAD_IMAGE_GRAYSCALE)
 
 
-    def write_result(self, data, i):
+    def write_dec_result(self, data, i):
         """
         write data into local file after decryption (i.e. inverse permutation)
         :param data: binary data of image

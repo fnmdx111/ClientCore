@@ -33,6 +33,7 @@ However, the chance that two keys generate the same sequence is still unknown.
 
 And this encryption method (permutation) is prone to known-plaintext attack.
 
+* added 13/05/08 Maybe images need not be idct-ed to be able to see (snow and mosaic), just send the encrypted file to server, and in this way block cipher could be used.
 
 License
 -------

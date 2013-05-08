@@ -75,13 +75,13 @@ class ClientCore(object):
         :return: np.ndarray of self.DCT_CONTAINER_TYPE
         """
         ret = np.ndarray((self.size_b_h, self.size_b_w),
-                         dtype=np.dtype((ClientCore.DCT_CONTAINER_TYPE,
+                         dtype=np.dtype((self.DCT_CONTAINER_TYPE,
                                          (8, 8))))
-        mat = np.zeros((8, 8), dtype=self.DCT_CONTAINER_TYPE)
+        block = np.zeros((8, 8), dtype=self.DCT_CONTAINER_TYPE)
 
         for r, c in self.block_coordinates:
-            mat[:8, :8] = img[r:r + 8, c:c + 8] # dct argument must be matrix of float
-            ret[r / 8, c / 8][:, :] = cv2.dct(mat)
+            block[:8, :8] = img[r:r + 8, c:c + 8] # dct argument must be matrix of float
+            ret[r / 8, c / 8][:, :] = cv2.dct(block)
 
         return ret
 
@@ -93,14 +93,13 @@ class ClientCore(object):
         :return: np.ndarray of self.GRAYSCALE_CONTAINER_TYPE
         """
         ret = np.zeros((self.size_h, self.size_w),
-                       dtype=ClientCore.GRAYSCALE_CONTAINER_TYPE)
+                       dtype=np.int16) # if np.uint8 was used, white dots will appear
         mat = mat.reshape((self.size_b_h, self.size_b_w, 8, 8))
-        block_float = np.zeros((8, 8), dtype=self.DCT_CONTAINER_TYPE)
 
         for i in range(self.size_b_h):
             for j in range(self.size_b_w):
-                block_float[:, :] = mat[i, j]
-                ret[i * 8:i * 8 + 8, j * 8:j * 8 + 8] = cv2.idct(block_float)
+                ret[i * 8:i * 8 + 8,
+                j * 8:j * 8 + 8] = cv2.idct(mat[i, j]).round()
 
         return ret
 
@@ -125,7 +124,7 @@ class ClientCore(object):
 
 
     def _transform_block(self, block, table):
-        ret = np.zeros(block.shape, dtype=ClientCore.DCT_CONTAINER_TYPE)
+        ret = np.zeros(block.shape, dtype=self.DCT_CONTAINER_TYPE)
         ret[0, 0] = block[0, 0]
         for i, p in zip(range(1, 64), table):
             ret[p / 8, p % 8] = block[i / 8, i % 8]
@@ -144,10 +143,10 @@ class ClientCore(object):
                  after permutation, size if (480, 640)
         """
         tmp = np.zeros((self.size_b_h, self.size_b_w),
-                       dtype=np.dtype((ClientCore.DCT_CONTAINER_TYPE,
+                       dtype=np.dtype((self.DCT_CONTAINER_TYPE,
                                        (8, 8))))
         ret = np.zeros((self.size_b_h, self.size_b_w),
-                       dtype=np.dtype((ClientCore.DCT_CONTAINER_TYPE,
+                       dtype=np.dtype((self.DCT_CONTAINER_TYPE,
                                        (8, 8))))
         for i in range(self.size_b_h):
             for j in range(self.size_b_w):

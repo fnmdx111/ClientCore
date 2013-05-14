@@ -68,42 +68,6 @@ class ClientCore(object):
         return '%s/%s' % (self.server_addr, sub_url)
 
 
-    def _dct_img(self, img):
-        """
-        return dct of specified matrix
-        :param img: np.ndarray of self.GRAYSCALE_CONTAINER_TYPE
-        :return: np.ndarray of self.DCT_CONTAINER_TYPE
-        """
-        ret = np.ndarray((self.size_b_h, self.size_b_w),
-                         dtype=np.dtype((self.DCT_CONTAINER_TYPE,
-                                         (8, 8))))
-        block = np.zeros((8, 8), dtype=self.DCT_CONTAINER_TYPE)
-
-        for r, c in self.block_coordinates:
-            block[:8, :8] = img[r:r + 8, c:c + 8] # dct argument must be matrix of float
-            ret[r / 8, c / 8][:, :] = cv2.dct(block)
-
-        return ret
-
-
-    def _idct_img(self, mat):
-        """
-        return inverse dct of specified matrix
-        :param mat: np.ndarray of self.DCT_CONTAINER_TYPE
-        :return: np.ndarray of self.GRAYSCALE_CONTAINER_TYPE
-        """
-        ret = np.zeros((self.size_h, self.size_w),
-                       dtype=np.int16) # if np.uint8 was used, white dots will appear
-        mat = mat.reshape((self.size_b_h, self.size_b_w, 8, 8))
-
-        for i in range(self.size_b_h):
-            for j in range(self.size_b_w):
-                ret[i * 8:i * 8 + 8,
-                j * 8:j * 8 + 8] = cv2.idct(mat[i, j]).round()
-
-        return ret
-
-
     def open_img(self, path):
         img = cv2.imread(path, cv2.CV_LOAD_IMAGE_GRAYSCALE)
 
@@ -124,9 +88,8 @@ class ClientCore(object):
 
 
     def _transform_block(self, block, table):
-        ret = np.zeros(block.shape, dtype=self.DCT_CONTAINER_TYPE)
-        ret[0, 0] = block[0, 0]
-        for i, p in zip(range(1, 64), table):
+        ret = np.zeros(block.shape, dtype=self.GRAYSCALE_CONTAINER_TYPE)
+        for i, p in zip(range(64), table):
             ret[p / 8, p % 8] = block[i / 8, i % 8]
 
         return ret
@@ -135,18 +98,19 @@ class ClientCore(object):
     def _transform(self, img, table, block_table):
         """
         transform (permutation) :img: according to :table: and :block_table:
-        :param img: np.ndarray of self.DCT_CONTAINER_TYPE
-                    that holds the matrix of image after DCT, size is (60, 80, 8, 8)
+        :param img: np.ndarray of self.GRAYSCALE_CONTAINER_TYPE,
+                    size is (60, 80, 8, 8)
         :param table: matrix permutation table
         :param block_table: block permutation table
-        :return: np.ndarray of self.DCT_CONTAINER_TYPE that holds the matrix
-                 after permutation, size if (480, 640)
+        :return: np.ndarray of self.GRAYSCALE_CONTAINER_TYPE
+                 that holds the matrix after permutation,
+                 size is (480, 640)
         """
         tmp = np.zeros((self.size_b_h, self.size_b_w),
-                       dtype=np.dtype((self.DCT_CONTAINER_TYPE,
+                       dtype=np.dtype((self.GRAYSCALE_CONTAINER_TYPE,
                                        (8, 8))))
         ret = np.zeros((self.size_b_h, self.size_b_w),
-                       dtype=np.dtype((self.DCT_CONTAINER_TYPE,
+                       dtype=np.dtype((self.GRAYSCALE_CONTAINER_TYPE,
                                        (8, 8))))
         for i in range(self.size_b_h):
             for j in range(self.size_b_w):
@@ -172,13 +136,6 @@ class ClientCore(object):
                               self.inv_block_perm_table)
 
 
-    def send_img_by_path(self, path, max_count=10):
-        with open(path, 'rb') as f:
-            return self._send_str(self._gen_url(self.SEND_ENC_IMAGE_URL),
-                                  img=base64.standard_b64encode(f.read()),
-                                  max_count=max_count)
-
-
     def send_img(self, img, max_count=10):
         _, img_buf = cv2.imencode('.jpg', img)
         return self._send_str(self._gen_url(self.SEND_ENC_IMAGE_URL),
@@ -190,12 +147,6 @@ class ClientCore(object):
         return self._send_str(self._gen_url(self.SEND_ENC_IMAGE_URL),
                               img=base64.standard_b64encode(raw),
                               max_count=max_count)
-
-
-    def upload_img_by_path(self, path):
-        with open(path, 'rb') as f:
-            return self._send_str(self._gen_url(self.UPLOAD_ENC_IMAGE_URL),
-                                  img=base64.standard_b64encode(f.read()))
 
 
     def upload_img(self, img):
@@ -235,7 +186,7 @@ class ClientCore(object):
         else:
             raise TypeError('no fatal argument provided')
 
-        return self._idct_img(func(self._dct_img(img)))
+        return func(img)
 
 
     def enc_img(self, path='', array=''):

@@ -77,7 +77,7 @@ class LogisticPermutation(object):
         x0, mu, skip = self.key3
         next_key = self._skip_x(x0, mu, skip)
 
-        return [i + 1 for i in self._gen_list(next_key, mu, size=63)[0]]
+        return [i for i in self._gen_list(next_key, mu, size=64)[0]]
 
 
     def get_block_inv_perm_mat(self):

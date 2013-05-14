@@ -186,6 +186,7 @@ class ClientCore(object):
         else:
             raise TypeError('no fatal argument provided')
 
+        img = img.reshape((self.size_b_h, self.size_b_w, 8, 8))
         return func(img)
 
 

@@ -81,7 +81,7 @@ class LogisticPermutation(object):
 
 
     def get_block_inv_perm_mat(self):
-        return [i + 1 for i in {x: i for i, x in enumerate(self.get_block_perm_mat())}.values()]
+        return [i for i in {x: i for i, x in enumerate(self.get_block_perm_mat())}.values()]
 
 
 

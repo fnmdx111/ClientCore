@@ -32,16 +32,8 @@ class ClientCore(object):
 
         self.size_b_h = size_h / 8
         self.size_b_w = size_w / 8
-        size_b_pair = self.size_b_h, self.size_b_w
 
-        key1, key2, key3 = keys
-        self.logistic = logistic.LogisticPermutation(key1, key2, key3)
-
-        self.perm_table = self.logistic.get_encrypt_mat(size_b_pair)
-        self.inv_perm_table = self.logistic.get_decrypt_mat(size_b_pair)
-
-        self.block_perm_table = self.logistic.get_block_perm_mat()
-        self.inv_block_perm_table = self.logistic.get_block_inv_perm_mat()
+        self.set_keys(keys)
 
         self.server_addr = server_addr
 
@@ -52,6 +44,19 @@ class ClientCore(object):
         self.logger = logging.getLogger(__name__)
 
         self.session = requests.Session()
+
+
+    def set_keys(self, keys):
+        size_b_pair = self.size_b_h, self.size_b_w
+
+        key1, key2, key3 = keys
+        self.logistic = logistic.LogisticPermutation(key1, key2, key3)
+
+        self.perm_table = self.logistic.get_encrypt_mat(size_b_pair)
+        self.inv_perm_table = self.logistic.get_decrypt_mat(size_b_pair)
+
+        self.block_perm_table = self.logistic.get_block_perm_mat()
+        self.inv_block_perm_table = self.logistic.get_block_inv_perm_mat()
 
 
     def init_core(self):
@@ -136,26 +141,13 @@ class ClientCore(object):
                               self.inv_block_perm_table)
 
 
-    def send_img(self, img, max_count=10):
-        _, img_buf = cv2.imencode('.jpg', img)
-        return self._send_str(self._gen_url(self.SEND_ENC_IMAGE_URL),
-                              img=base64.standard_b64encode(img_buf.data),
-                              max_count=max_count)
-
-
-    def send_img_raw(self, raw, max_count=10):
+    def send_img(self, raw, max_count=10):
         return self._send_str(self._gen_url(self.SEND_ENC_IMAGE_URL),
                               img=base64.standard_b64encode(raw),
                               max_count=max_count)
 
 
-    def upload_img(self, img):
-        _, img_buf = cv2.imencode('.jpg', img)
-        return self._send_str(self._gen_url(self.UPLOAD_ENC_IMAGE_URL),
-                              img=base64.standard_b64encode(img_buf.data))
-
-
-    def upload_img_raw(self, raw):
+    def upload_img(self, raw):
         return self._send_str(self._gen_url(self.UPLOAD_ENC_IMAGE_URL),
                               img=base64.standard_b64encode(raw))
 

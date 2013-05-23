@@ -21,7 +21,6 @@ TODO
 ----
 
 * adjust algorithm so that difference between original and retrieved is not too great
-* implement robust test
 
 
 Note

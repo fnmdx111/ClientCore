@@ -247,14 +247,14 @@ class ClientCore(object):
         return self.write_result(self.dec_img(array=self._from_raw_to_grayscale(data)), i)
 
 
-    def write_result(self, img, i):
+    def write_result(self, img, i, folder='results'):
         """
         write data directly into local file
         :param img: np.ndarray of self.GRAYSCALE_CONTAINER_TYPE
         :param i: number of image
         :return: image file path
         """
-        f_path = os.path.join(self.cwd, 'results', 'res%s.jpg' % i)
+        f_path = os.path.join(self.cwd, folder, 'res%s.jpg' % i)
         self.save_img(f_path, img)
         return f_path
 
